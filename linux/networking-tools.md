@@ -128,8 +128,6 @@ While `netstat` remains a popular tool, it's worth noting that its functionality
 
 ### iptables and firewalld
 
-Certainly! Both `firewalld` and `iptables` are tools used to manage packet filtering and NAT rules in Linux systems. They interface with the Netfilter subsystem in the Linux kernel to determine how packets should be processed.
-
 ### **iptables**
 
 1. **Overview**:
