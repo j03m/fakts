@@ -1,2 +1,5 @@
 questions.md
 .idea
+*.pdf
+*_book.txt
+venv
