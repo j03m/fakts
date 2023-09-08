@@ -52,7 +52,6 @@ class MultiLevelPerceptron:
 
         self.assert_nan(x, activations, zs)
 
-
         return x, activations, zs
 
     def calculate_loss(self, y_true, y_pred):
@@ -115,9 +114,9 @@ X, y = MultiLevelPerceptron.scale_data(X, y)
 # Initialize and train the neural network
 mlp = MultiLevelPerceptron([1, 4, 3, 2, 1])
 
-mlp.train(X, y, epochs=1000, learning_rate=0.01)
+#mlp.train(X, y, epochs=1000, learning_rate=0.01)
 
 # Test the trained network
-X_test, y_test = generate_data(num_samples=1)
-
-print("Generated: ", X_test, " expect:", y_test, " predict:", mlp.predict(X_test)[0])
+for i in range(0, 10):
+    X_test, y_test = generate_data(num_samples=1)
+    print("Generated: ", X_test, " expect:", y_test, " predict:", mlp.predict(X_test)[0])
