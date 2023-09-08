@@ -333,5 +333,5 @@ So, backpropagation is fundamentally an optimization algorithm for minimizing th
 
 There is a bunch of math concepts we're going to need to get comfortable with if we want to know how this stuff works. We don't need to solve any equations mind you, but it really helps to know the high level concepts.
 
-In calculus, a derivative measures how a function changes as its input changes. In simpler terms, it tells us the "slope" or "rate of change" at a particular point. The mathematical notation for the derivative of a function
+In calculus, a derivative measures how a function changes as its input changes. In simpler terms, it tells us the "slope" or "rate of change" at a particular point. The mathematical notation for the derivative of a function is $\( f(x) \) is \( f'(x) \) or \( \frac{{d}}{{dx}} f(x) \).
 
