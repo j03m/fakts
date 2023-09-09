@@ -33,17 +33,15 @@ For example, consider a simple equation for a straight line $\( y = mx + b \)$. 
 
 ### What are Biases?
 
-Biases allow neurons to have some flexibility in activation. In the straight line equation \( y = mx + b \), the \( b \) term serves as a bias, shifting the line up or down.
+Biases allow neurons to have some flexibility in activation. In the straight line equation $\( y = mx + b \)$, the $\( b \)$ term serves as a bias, shifting the line up or down.
 
 ### Why are they important?
 
 Weights and biases are crucial because they are what the neural network adjusts during learning. Through a process called backpropagation, which we'll cover later, the network tweaks these parameters to minimize the difference between its predictions and the actual data. As these "tuning pegs" get adjusted, the network becomes better at its task.
 
-Absolutely, introducing the code early on can set the context for the reader and allow them to know where to look for practical examples as they go through the article. You can introduce the code in a concise yet informative manner.
-
 ### Introducing the Code
 
-All the concepts discussed in this article are accompanied by a practical Python example [mlp.py](mlp.py), which is in this repo and introduces a neural network we used to demonstrate that we could train it multiply by 100.
+All the concepts discussed in this article are accompanied by a practical Python example [mlp.py](mlp.py), which is in this repo and introduces a neural network we used to demonstrate that we could train it to multiply by 100.
 
 The Python file contains a class named `MultiLevelPerceptron`, which serves as our neural network model for this tutorial. While we'll go into detail about how the code works later on, for those who like to jump ahead or want a sneak peek, feel free to explore this file.
 
@@ -153,10 +151,6 @@ Think of each weight as a "pathway" for information flow between two neurons in 
 In our code, biases are initialized to zero. This is a common practice and generally works well for small networks like the one we're working with.
 
 Up next, we'll see how this all comes together in forward propagation.
-
-Certainly, adding a brief section on activation functions can clarify why a linear function was chosen in this specific example while also briefly touching on other types of activation functions like the sigmoid.
-
----
 
 #### A Note on Activation Functions
 
@@ -361,13 +355,13 @@ for epoch in range(epochs):
 
 Inside this loop, the following sequence of operations takes place:
 
-1. **Forward Propagation**: The network makes a prediction based on the current weights and biases. Note here we're passing ALL the numbers into `predict` (a.k.a a vector), the codes till works and what comes out are ALL our predictions (again, a vector of predictions).  
+1. **Forward Propagation**: The network makes a prediction based on the current weights and biases. Note here we're passing ALL the numbers into `predict` (a.k.a a vector) and what comes out are ALL our predictions (again, a vector of predictions).  
 
     ```python
     output, activations, _ = self.predict(X)
     ```
 
-2. **Calculating Loss**: The difference between the prediction (`output`) and the actual value (`y`) is calculated using the Mean Squared Error (MSE) formula. We haven't talked about that yet, but essentially all this is doing is taking out array of desired results against the array of predictions we got and coming up for a value that represents how well we did. That value is calculated by subtracting each value, squaring away negatives and summing them. 
+2. **Calculating Loss**: The difference between the prediction (`output`) and the actual value (`y`) is calculated using the Mean Squared Error (MSE) formula. We haven't talked about that yet, but essentially all this is doing is taking our array of desired results and diffing against the array of predictions we made and coming up for a value that represents how well we did. That value is calculated by subtracting each value, squaring away negatives and summing them. 
 
     ```python
     loss = self.mse(y, output)
@@ -475,7 +469,7 @@ we're going to do some math to understand the rate and direction of the error an
 delta = (y_pred - y_true)
 ```
 
-> In our code, you'll notice that \( \delta \) is calculated as a simple subtraction: \( \delta = (y_{\text{pred}} - y_{\text{true}}) \). This is because we're using a Mean Squared Error (MSE) loss and a linear activation function for the output layer. Normally, \( \delta \) would be calculated as a partial derivative of the loss function with respect to the network's output, but in our case, the partial derivative simplifies to the difference between predicted and true values. This won't always be the case, especially when using non-linear activation functions. For now, totally ignore this, but I felt not including this little note would be an oversight that could lead to confusion later. In our subsequent chapters we'll update this!
+> In our code, you'll notice that $\( \delta \)$ is calculated as a simple subtraction: $\( \delta = (y_{\text{pred}} - y_{\text{true}}) \)$. This is because we're using a Mean Squared Error (MSE) loss and a linear activation function for the output layer. Normally, $\( \delta \)$ would be calculated as a partial derivative of the loss function with respect to the network's output, but in our case, the partial derivative simplifies to the difference between predicted and true values. This won't always be the case, especially when using non-linear activation functions. For now, totally ignore this, but I felt not including this little note would be an oversight that could lead to confusion later. In our subsequent chapters we'll update this!
 
 ```python
 grad_biases[-1] = delta
@@ -611,7 +605,7 @@ By the end of this loop, we've calculated the gradients for all the weights and 
 
 # The Results!
 
-That pretty much covers everything we want to cover. LEt's see how the code works in action.
+That pretty much covers everything we want to cover. Let's see how the code works in action.
 
 For our first experiment, we'll stick with our simple example, multiplying an input number by 100.
 
@@ -677,9 +671,9 @@ Epoch 470, Loss: 1.262177448353619e-29
 Epoch 480, Loss: 1.232595164407831e-30
 ```
 
-I cut this off at Epochs 480, because our loss doesn't get any better. An optimization you will find in most machine learning frameworks is the ability to end training once this happens. I'll leave it as an exercise for the reader.
+I cut this off at Epochs 480, because our loss doesn't get any better. An optimization you will find in most machine learning frameworks is the ability to end training once this happens. We'll see more on this in a bit.
 
-Once we're trained our model can approximate multiplication by 100! 
+Once we're trained, our model can approximate multiplication by 100! 
 
 ```
 We're trained, let's predict again!
