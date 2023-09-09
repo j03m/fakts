@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 
+_assert_nan = False
 
 # Adding assertions to check for NaN in weights and biases
 class MultiLevelPerceptron:
@@ -23,8 +24,6 @@ class MultiLevelPerceptron:
 
     def relu_derivative(self, z):
         return (z > 0).astype(float)
-
-
 
     @staticmethod
     def mse(y_true, y_pred):
@@ -52,8 +51,8 @@ class MultiLevelPerceptron:
             bias_matrix = np.zeros((self.layers[i + 1], 1))
             self.biases.append(bias_matrix)
 
-    def predict(self, x):
-        x = np.array(x)
+    def predict(self, input_):
+        x = np.array(input_)
 
         # Check if x is a scalar
         if x.shape == ():
@@ -72,47 +71,44 @@ class MultiLevelPerceptron:
             zs.append(z)
             x = self.activation_function(z)
             activations.append(x)
-
-        self.assert_nan(x, activations, zs)
+            self.assert_nan(x, activations, zs)
 
         return x, activations, zs
-
-    def calculate_loss(self, y_true, y_pred):
-        return self.mse(y_true, y_pred)
 
     def backward_propagation(self, y_true, y_pred, activations, zs):
         grad_weights = [np.zeros(w.shape) for w in self.weights]
         grad_biases = [np.zeros(b.shape) for b in self.biases]
 
         delta = 2 * (y_pred - y_true) * self.activation_derivative(zs[-1])
-        #delta = (y_pred - y_true)
+        # delta = (y_pred - y_true)
         grad_biases[-1] = delta
         grad_weights[-1] = np.dot(delta, activations[-2].T)
 
         for l in range(2, len(self.layers)):
             delta = np.dot(self.weights[-l + 1].T, delta)
-            #delta = np.dot(self.weights[-l + 1].T, delta) * self.activation_derivative(zs[-l])
+            # delta = np.dot(self.weights[-l + 1].T, delta) * self.activation_derivative(zs[-l])
             grad_biases[-l] = delta
             grad_weights[-l] = np.dot(delta, activations[-l - 1].T)
 
         return grad_weights, grad_biases
 
-    def assert_nan(self, x, activations, zs):
-        # Assertions to check for NaN in weights and biases
-        for i, w in enumerate(self.weights):
-            assert not np.isnan(w).any(), f'NaN found in weights at index {i}'
-        for i, b in enumerate(self.biases):
-            assert not np.isnan(b).any(), f'NaN found in biases at index {i}'
-        for i, b in enumerate(x):
-            assert not np.isnan(b).any(), f'NaN found in x at index {i}'
-        for i, b in enumerate(activations):
-            assert not np.isnan(b).any(), f'NaN found in activations at index {i}'
-        for i, b in enumerate(zs):
-            assert not np.isnan(b).any(), f'NaN found in zs at index {i}'
-
     def update_parameters(self, grad_weights, grad_biases, learning_rate):
         self.weights = [w - learning_rate * gw for w, gw in zip(self.weights, grad_weights)]
         self.biases = [b - learning_rate * gb for b, gb in zip(self.biases, grad_biases)]
+
+    def assert_nan(self, x, activations, zs):
+        if _assert_nan:
+            # Assertions to check for NaN in weights and biases
+            for i, w in enumerate(self.weights):
+                assert not np.isnan(w).any(), f'NaN found in weights at index {i}'
+            for i, b in enumerate(self.biases):
+                assert not np.isnan(b).any(), f'NaN found in biases at index {i}'
+            for i, b in enumerate(x):
+                assert not np.isnan(b).any(), f'NaN found in x at index {i}'
+            for i, b in enumerate(activations):
+                assert not np.isnan(b).any(), f'NaN found in activations at index {i}'
+            for i, b in enumerate(zs):
+                assert not np.isnan(b).any(), f'NaN found in zs at index {i}'
 
     def train(self, X, y, epochs, learning_rate=0.01, patience_limit=500, warm_up_epochs=500):
         best_val_loss = float('inf')
@@ -124,7 +120,7 @@ class MultiLevelPerceptron:
                 # sometimes storing the zs is useful for backpropagation. So, predict returns it
                 # but we don't need it here
                 y_pred, activations, zs = self.predict(x_val)
-                loss = self.calculate_loss(y_val, y_pred)
+                loss = self.mse(y_val, y_pred)
                 grad_weights, grad_biases = self.backward_propagation(y_val, y_pred, activations, zs)
                 self.update_parameters(grad_weights, grad_biases, learning_rate)
 
@@ -153,30 +149,48 @@ def generate_data(num_samples=1000):
 
 def generate_apartment_data(num_samples=1000):
     # Initialize empty lists to hold our features and labels
-    features = []
+    square_feet = []
+    num_bedrooms = []
+    num_bathrooms = []
+    proximity_to_transit = []
+    neighborhood_quality = []
     labels = []
 
     # Generate features and labels
     for _ in range(num_samples):
-        square_feet = np.random.randint(500, 3001)
-        num_bedrooms = np.random.randint(0, 5)
-        num_bathrooms = np.random.randint(1, 4)
-        proximity_to_transit = np.random.randint(1, 11)
-        neighborhood_quality = np.random.randint(1, 11)
-
-        # Combine individual features into a single feature vector for each sample
-        feature_vector = [square_feet, num_bedrooms, num_bathrooms, proximity_to_transit, neighborhood_quality]
+        square_feet.append(np.random.randint(500, 3001))
+        num_bedrooms.append(np.random.randint(0, 5))
+        num_bathrooms.append(np.random.randint(1, 4))
+        proximity_to_transit.append(np.random.randint(1, 11))
+        neighborhood_quality.append(np.random.randint(1, 11))
 
         # Calculate label (price) based on the features
-        base_price = (square_feet * 1.5) + (num_bedrooms * 300) + (num_bathrooms * 200) + (
-                proximity_to_transit * 40) + (neighborhood_quality * 50)
+        base_price = (square_feet[-1] * 1.5) + (num_bedrooms[-1] * 300) + (num_bathrooms[-1] * 200) + (
+                proximity_to_transit[-1] * 40) + (neighborhood_quality[-1] * 50)
 
         # Add random fluctuation between 0-10%
         fluctuation = np.random.uniform(0, 0.1)
         final_price = base_price * (1 + fluctuation)
 
-        features.append(feature_vector)
         labels.append(final_price)
+
+    if num_samples > 1:
+        # Scale each feature
+        square_feet = MultiLevelPerceptron.minmax_scale(np.array(square_feet), np.min(square_feet), np.max(square_feet))
+        num_bedrooms = MultiLevelPerceptron.minmax_scale(np.array(num_bedrooms), np.min(num_bedrooms),
+                                                         np.max(num_bedrooms))
+        num_bathrooms = MultiLevelPerceptron.minmax_scale(np.array(num_bathrooms), np.min(num_bathrooms),
+                                                          np.max(num_bathrooms))
+        proximity_to_transit = MultiLevelPerceptron.minmax_scale(np.array(proximity_to_transit),
+                                                                 np.min(proximity_to_transit),
+                                                                 np.max(proximity_to_transit))
+        neighborhood_quality = MultiLevelPerceptron.minmax_scale(np.array(neighborhood_quality),
+                                                                 np.min(neighborhood_quality),
+                                                                 np.max(neighborhood_quality))
+        labels = MultiLevelPerceptron.minmax_scale(labels, np.min(labels), np.max(labels))
+
+    # Assemble features back into a single array
+    features = np.column_stack((square_feet, num_bedrooms, num_bathrooms, proximity_to_transit, neighborhood_quality))
 
     return np.array(features), np.array(labels)
 
@@ -224,8 +238,8 @@ if __name__ == "__main__":
 
         print("Let's train! ")
         X, y = generate_apartment_data(num_samples=10000)
-        X, y = MultiLevelPerceptron.scale_data(X, y)
-        mlp.train(X, y, epochs=2000, patience_limit=1000)
+
+        mlp.train(X, y, epochs=10000, patience_limit=1000)
         print("We're trained, let's predict again!")
         for i in range(0, 10):
             X_test, y_test = generate_apartment_data(num_samples=1)

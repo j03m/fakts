@@ -367,34 +367,8 @@ Inside this loop, the following sequence of operations takes place:
     loss = self.mse(y, output)
     ```
    
-   Mathematically we say:
+   See [Math For Machine Learning 1](./math-for-machine-learning-1.md) for a full discussion of Mean Squared Error
    
-   $$\[
-    \text{MSE} = \frac{1}{n} \sum_{i=1}^{n} (y_{\text{true}, i} - y_{\text{pred}, i})^2
-    \]$$
-   
-   Where `n` is the number of samples.
-
-   In python that extrapolates to:
-   
-   ```python
-    @staticmethod
-    def mse(y_true, y_pred):
-        return np.mean((y_true - y_pred) ** 2)
-   ```
-
-   Here is a quick illustration of what is happening there:
-
-   ```
-   >>> y_true = [5,6,7,8]  # desired result
-   >>> y_pred = [10,6,4,8] # predicted result
-   >>> (np.array(y_true) - y_pred) # differences
-   array([-5,  0,  3,  0])
-   >>> (np.array(y_true) - y_pred) ** 2 # square away negatives
-   array([25,  0,  9,  0])
-   >>> np.mean((np.array(y_true) - y_pred) ** 2) # mean of all errors
-   8.5
-   ```
 
 3. **Backward Propagation**: This is where the network learns from its mistakes. The `backward_propagation` method adjusts the weights and biases in the network based on the calculated loss.
 
@@ -819,30 +793,5 @@ The augmented training routine:
                 break
 ```
 
-# Revisiting a complex model architecture:
 
 
-# Math
-
-There is a bunch of math concepts we're going to need to get comfortable with if we want to know how this stuff works. We don't need to solve any equations mind you, but it really helps to know the high level concepts.
-
-In calculus, a derivative measures how a function changes as its input changes. In simpler terms, it tells us the "slope" or "rate of change" at a particular point. The mathematical notation for the derivative of a function is $\( f(x) \)$ is $\( f'(x) \)$ or $\( \frac{{d}}{{dx}} f(x) \)$.
-
-#### Intuition
-
-Imagine driving a car on a hilly road. The derivative would tell you how steep the hill is at each point. If the derivative is zero, you're at a flat point, possibly the top or bottom of a hill.
-
-
-### Partial Derivative
-
-In multivariable calculus, when a function depends on more than one variable, we use partial derivatives. A partial derivative with respect to one variable tells us how the function changes with respect to that variable, keeping all other variables constant.
-
-#### Intuition
-
-Let's say you're playing minecraft, and you're in a mountain range. The mountains extend descend in different directions. Depending on the direction you move in, you might move up or down. In a Minecraft mountain range, each point in the terrain can be represented by coordinates $\( (x, y, z) \)$, where $\( x \)$ and $\( y \)$ are the horizontal coordinates and $\( z \)$ is the elevation. 
-
-If you're standing at a particular point $\( (x_0, y_0, z_0) \)$, a partial derivative with respect to $\( x \)$ would tell you how much the elevation $\( z \)$ changes as you move in the $\( x \)$-direction, while keeping $\( y \)$ constant. Similarly, the partial derivative with respect to $\( y \)$ would tell you how $\( z \)$ changes as you move in the $\( y \)$-direction, keeping $\( x \)$ constant.
-
-So, if $\( \frac{\partial z}{\partial x} \)$ is positive at $\( (x_0, y_0, z_0) \)$, it means that moving in the positive $\( x \)$-direction will increase your elevation, i.e., you'll be moving uphill. If it's negative, you'll be moving downhill. The same logic applies for $\( \frac{\partial z}{\partial y} \)$.
-
-In the context of neural networks, each weight and bias can be thought of as a coordinate in a high-dimensional space, and the partial derivatives help us understand how the error changes as we tweak each of these parameters.
