@@ -319,7 +319,7 @@ Generated:  [0.20056979]  expect: [20.05697901]  predict: [[0.43539147]]
 
 Very clearly, this is not useful. But don't worry—this is entirely expected for a neural network that hasn't been trained yet. This leads us to our next step: training and backpropagation!
 
-# Backpropagation
+# Training and Backpropagation
 
 Earlier we said:
 
@@ -331,7 +331,524 @@ Backpropagation is like that for the neural network. It will examine the results
 
 So, backpropagation is fundamentally an optimization algorithm for minimizing the error in the neural network's predictions.
 
+Let's look at our training loop first:
+
+## The Training Loop
+
+The training loop is where the magic of backpropagation happens. It's the central hub where data flows in, gets processed, and adjustments are made. Let's break down the major components:
+
+### Function Signature and Parameters
+
+```python
+def train(self, X, y, epochs=1000, learning_rate=0.01):
+```
+
+The `train` method takes four parameters:
+
+- `X`: The input data. This is the data we want to make predictions on. In our case, this is a series of randomly generated numbers that we want the model to successfully multiply by 100
+- `y`: The truth. Here, `y` are the values that *should* come out of the neural network if it is doing its job well. These are used to calibrate the system. If `X` are the sounds our guitar
+string currently makes, `y` are the sounds it should make.
+- `epochs`: This signifies the total number of cycles (forward and backward passes) through the entire dataset.
+- `learning_rate`: The rate at which we adjust our weights and biases. This is actually a really important value because it's the value we will use to adjust weights. If it's too low, training will take forever. If it's too high, we'll bounce around and never land anywhere meaningful. This is like how finely we'll twist the guitar knobs. If we twist too lightly, we'll be there all day, too hard and we'll constantly overshoot the note target.
+
+### The Epoch Loop
+
+The code enters a loop that iterates for the number of `epochs` specified. An epoch is one complete forward and backward pass of all the training examples.
+
+```python
+for epoch in range(epochs):
+```
+
+Inside this loop, the following sequence of operations takes place:
+
+1. **Forward Propagation**: The network makes a prediction based on the current weights and biases. Note here we're passing ALL the numbers into `predict` (a.k.a a vector), the codes till works and what comes out are ALL our predictions (again, a vector of predictions).  
+
+    ```python
+    output, activations, _ = self.predict(X)
+    ```
+
+2. **Calculating Loss**: The difference between the prediction (`output`) and the actual value (`y`) is calculated using the Mean Squared Error (MSE) formula. We haven't talked about that yet, but essentially all this is doing is taking out array of desired results against the array of predictions we got and coming up for a value that represents how well we did. That value is calculated by subtracting each value, squaring away negatives and summing them. 
+
+    ```python
+    loss = self.mse(y, output)
+    ```
+   
+   Mathematically we say:
+   
+   $$\[
+    \text{MSE} = \frac{1}{n} \sum_{i=1}^{n} (y_{\text{true}, i} - y_{\text{pred}, i})^2
+    \]$$
+   
+   Where `n` is the number of samples.
+
+   In python that extrapolates to:
+   
+   ```python
+    @staticmethod
+    def mse(y_true, y_pred):
+        return np.mean((y_true - y_pred) ** 2)
+   ```
+
+   Here is a quick illustration of what is happening there:
+
+   ```
+   >>> y_true = [5,6,7,8]  # desired result
+   >>> y_pred = [10,6,4,8] # predicted result
+   >>> (np.array(y_true) - y_pred) # differences
+   array([-5,  0,  3,  0])
+   >>> (np.array(y_true) - y_pred) ** 2 # square away negatives
+   array([25,  0,  9,  0])
+   >>> np.mean((np.array(y_true) - y_pred) ** 2) # mean of all errors
+   8.5
+   ```
+
+3. **Backward Propagation**: This is where the network learns from its mistakes. The `backward_propagation` method adjusts the weights and biases in the network based on the calculated loss.
+
+    ```python
+    self.backward_propagation(y, output, activations, learning_rate)
+    ```
+   Backward propagation is going to need its own section, so lets just wave our hands and assume some magic happens here. We'll go into detail below.
+
+4. **Monitoring**: The loss for this epoch is printed out. This lets us see if our loss is reducing, if it doesn't - something is wrong.
+
+    ```python
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch}, Loss: {loss}")
+    ```
+
+By the end of all the epochs, the weights and biases in the network should be adjusted (or "tuned") enough to make accurate predictions.
+
+Now that we understand the flow of the training loop, let's delve deeper into the `backward_propagation` method, where the real learning happens.
+
+### Backward Propagation in Context
+
+#### Inside the Training Loop
+
+In the training loop, the method `backward_propagation` is called to adjust the weights and biases based on the calculated loss:
+
+```python
+grad_weights, grad_biases = self.backward_propagation(y_val, y_pred, activations)
+```
+Here, `y_val` is the actual output value from our training set for the current sample, `y_pred` is the predicted output from the forward pass, and `activations` are the activation values stored during the forward pass.
+
+The results of that are then applied to the current weights and biases:
+
+```python
+self.update_parameters(grad_weights, grad_biases, learning_rate)
+```
+
+We'll talk about the body of both of these functions next.
+
+#### Backward Propagation Method
+
+The `backward_propagation` method is defined as follows:
+
+```python
+def backward_propagation(self, y_true, y_pred, activations):
+    grad_weights = [np.zeros(w.shape) for w in self.weights]
+    grad_biases = [np.zeros(b.shape) for b in self.biases]
+    delta = (y_pred - y_true)
+    grad_biases[-1] = delta
+    grad_weights[-1] = np.dot(delta, activations[-2].T)
+
+    for l in range(2, len(self.layers)):
+        delta = np.dot(self.weights[-l + 1].T, delta)
+        grad_biases[-l] = delta
+        grad_weights[-l] = np.dot(delta, activations[-l - 1].T)
+
+    return grad_weights, grad_biases
+```
+
+1. First and foremost we need a vehicle to collect adjustments. We'll create a set of zero-ed weights and biases that are the same shape as our initialized network:
+
+```python
+grad_weights = [np.zeros(w.shape) for w in self.weights]
+grad_biases = [np.zeros(b.shape) for b in self.biases]
+```
+
+We refer to our adjustments as "gradients". These are partial derivatives. Don't worry if you don't understand that calculus yet, we'll explain it all. For right now just know
+we're going to do some math to understand the rate and direction of the error and we're going to call that a "gradient" and its purpose is so that we know how to adjust our weights and biases.
+
+2. Next up, we need to know how far off we are in our predictions. To do that we're going to simply get a difference and call it the delta:
+
+```python
+delta = (y_pred - y_true)
+```
+
+> In our code, you'll notice that \( \delta \) is calculated as a simple subtraction: \( \delta = (y_{\text{pred}} - y_{\text{true}}) \). This is because we're using a Mean Squared Error (MSE) loss and a linear activation function for the output layer. Normally, \( \delta \) would be calculated as a partial derivative of the loss function with respect to the network's output, but in our case, the partial derivative simplifies to the difference between predicted and true values. This won't always be the case, especially when using non-linear activation functions. For now, totally ignore this, but I felt not including this little note would be an oversight that could lead to confusion later. In our subsequent chapters we'll update this!
+
+```python
+grad_biases[-1] = delta
+grad_weights[-1] = np.dot(delta, activations[-2].T)
+```
+We then set our last set of biases and weights. For biases, we simply use the delta. For weights, the dot product here essentially computes the gradient for the weights connecting the second-to-last layer and the last layer (output layer). This gradient will tell us how much to adjust each weight during the update step.
+
+Let's get a feel for what is happening here. At the point `backward_propagation` is for the first time our input to the function representing a prediction might look like this:
+
+```
+>>> import numpy as np
+>>> activations = [
+...     np.array([[0.00062111]]),
+...     np.array([[-8.24681185e-05], [1.51119998e-04], [-9.86444750e-04], [5.94552971e-04]]),
+...     np.array([[0.00014544], [0.00024547], [-0.00055684]]),
+...     np.array([[0.0004132], [-0.00111623]]),
+...     np.array([[0.00072361]])
+... ]
+>>> y_pred = [[-0.00135926]]
+>>> y_true = 0.2920381314646667
+>>> y_pred = np.array(y_pred)
+```
+
+Where `activations` is the result of the input value being augmented by all the neurons, `y_true` is the desired
+result to have been predicted from input `x` and `y_pred` is our (terrible, untrained) prediction. 
+
+Then we calculate the delta:
+
+```
+>>> delta = (y_pred - y_true)
+>>> delta
+array([[-0.29339739]])
+>>> 
+```
+
+And produce a set of gradients for our weights using the dot product delta and transpose of activations:
+
+Activations at the `-2` level:
+```
+>>> activations[-2]
+array([[ 0.0004132 ],
+       [-0.00111623]])
+```
+
+Transposed so we can use `np.dot`
+```
+>>> activations[-2].T
+array([[ 0.0004132 , -0.00111623]])
+```
+
+Make the augmentation:
+
+```
+>>> np.dot(delta, activations[-2].T)
+array([[-0.00012123,  0.0003275 ]])
+```
+
+**Unpacking the Dot Product**
+
+The dot product operation might look like a simple mathematical trick, but it serves a crucial role in neural networks. In this specific context, it helps us compute how much each neuron in the previous layer contributed to the error in the output. By multiplying the delta (our error term) with the activations from the previous layer, we can proportionally distribute the 'blame' for the error back through the network. This will ultimately inform how much we should adjust each weight to reduce the error during the next forward pass.
+
+```python
+grad_weights[-1] = np.dot(delta, activations[-2].T)
+```
+
+**Detail about -2 index**
+
+You might notice that we are using `activations[-2]` in our code. This is because we are grabbing the activations from the second-to-last layer of the neural network. Why the second-to-last and not the last? Well, the last layer's activations are essentially the output of the neural network, which we already have as `y_pred`. It's the second-to-last layer's activations that we need to figure out how much the neurons in that layer contributed to the output (and thus the error).
+
+```python
+# This gives us the activations of the neurons in the second-to-last layer
+second_to_last_activations = activations[-2]
+```
+By using these activations, we can more accurately backpropagate the error through the network, making adjustments to the weights and biases as needed.
+
+**The Backpropagation Loop**
+
+After calculating the gradients for the weights and biases in the output layer, we need to continue this process for all the preceding layers. This is where the loop comes in:
+
+```python
+for l in range(2, len(self.layers)):
+    delta = np.dot(self.weights[-l + 1].T, delta)
+    grad_biases[-l] = delta
+    grad_weights[-l] = np.dot(delta, activations[-l - 1].T)
+```
+
+Let's break it down:
+
+**Firstly, the Loop Range:**
+
+The loop iterates from $\( l = 2 \)$ to $\( \text{len(layers)} \)$. This means we start from the second-to-last layer and go all the way to the input layer. Why $\( l = 2 \)$ and not $\( l = 1 \)$ or $\( l = 3 \)$? Because we have already handled the last layer (output layer) before entering the loop. So the next layer to handle is the second-to-last one.
+
+**The Loop Index:**
+
+The index $\( -l + 1 \)$ can be confusing. Let's break it down:
+
+- The negative index means we're counting from the end of the list, moving from the output layer back towards the input layer.
+- $\( l \)$ starts at 2 and goes up, so $\( -l \)$ starts at -2 and goes down.
+- The $\( +1 \)$ at the end adjusts the index, essentially converting it from a 1-based index to a 0-based index.
+
+So, $\( -l + 1 \)$ means: start from the second-to-last layer and go backward, adjusting for 0-based indexing.
+
+**Example:**
+
+If you have 5 layers, here's how the indexing would work:
+
+- When $\( l = 2 \)$, $\( -l + 1 = -1 \)$, pointing to the last element (output layer, already handled).
+- When $\( l = 3 \)$, $\( -l + 1 = -2 \)$, pointing to the second-to-last element.
+- When $\( l = 4 \)$, $\( -l + 1 = -3 \)$, pointing to the third-to-last element.
+- When $\( l = 5 \)$, $\( -l + 1 = -4 \)$, pointing to the fourth-to-last element (i.e., the input layer).
+
+This way, we traverse from the output layer back to the input layer, adjusting the weights and biases along the way.
+
+**Delta Recalculation**: The first line recalculates the delta for the current layer by taking the dot product of the transpose of the weights from the next layer and the delta from that next layer. This essentially backpropagates the error from the output layer through the network, adjusting it at each layer based on how much each neuron contributed to the error in the layer ahead of it.
+
+    ```python
+    delta = np.dot(self.weights[-l + 1].T, delta)
+    ```
+
+**Gradient for Biases**: The gradient for the biases is simply the delta for the current layer. This delta captures how much the neurons in this layer contributed to the error in the output.
+
+    ```python
+    grad_biases[-l] = delta
+    ```
+
+**Gradient for Weights**: Similar to what we did for the output layer, we calculate the gradient for the weights in the current layer by taking the dot product of the delta and the transpose of the activations from the previous layer.
+
+    ```python
+    grad_weights[-l] = np.dot(delta, activations[-l - 1].T)
+    ```
+
+By the end of this loop, we've calculated the gradients for all the weights and biases across all layers. These gradients tell us how much to adjust each weight and bias in the learning step, which will be the next part of the training process.
+
+# The Results!
+
+That pretty much covers everything we want to cover. LEt's see how the code works in action.
+
+For our first experiment, we'll stick with our simple example, multiplying an input number by 100.
+
+You can run the `mlp.py` script and get:
+
+```
+jmordetsky in ~/curriculum (main) > python3 perceptron/mlp.py 
+Untrained: we generated:   [0.37669614] . We expect: [37.66961426]  but we predicted: [[1.15790091]]
+```
+
+Initially, we make a pretty lame prediction. Then we start training:
+
+```
+Let's train! 
+Epoch 0, Loss: 0.11352854688370916
+Epoch 10, Loss: 0.12013266848029466
+Epoch 20, Loss: 0.11865233375605942
+Epoch 30, Loss: 0.11347769327302479
+Epoch 40, Loss: 0.10573059114611733
+Epoch 50, Loss: 0.09604028887925448
+Epoch 60, Loss: 0.08503979965122975
+Epoch 70, Loss: 0.073649636814618
+Epoch 80, Loss: 0.06300696210325235
+Epoch 90, Loss: 0.053644281881930246
+Epoch 100, Loss: 0.04491563984216313
+Epoch 110, Loss: 0.035951698696944805
+Epoch 120, Loss: 0.027333193812017296
+Epoch 130, Loss: 0.02107889761222697
+Epoch 140, Loss: 0.0186690480068528
+Epoch 150, Loss: 0.019734087318031626
+Epoch 160, Loss: 0.022299369380400776
+Epoch 170, Loss: 0.02407466966388119
+Epoch 180, Loss: 0.023862057597859723
+Epoch 190, Loss: 0.021503595164988322
+Epoch 200, Loss: 0.01754732159227371
+Epoch 210, Loss: 0.01309752817516183
+Epoch 220, Loss: 0.009137236823166278
+Epoch 230, Loss: 0.006038189145372477
+Epoch 240, Loss: 0.003731601041891022
+Epoch 250, Loss: 0.0020658863501067113
+Epoch 260, Loss: 0.0009678464303774697
+Epoch 270, Loss: 0.000375479812445458
+Epoch 280, Loss: 0.00013328421096244324
+Epoch 290, Loss: 5.43236217097799e-05
+Epoch 300, Loss: 3.0184751656888872e-05
+Epoch 310, Loss: 2.3578778742494586e-05
+Epoch 320, Loss: 2.5306770140281136e-05
+Epoch 330, Loss: 3.444505494081965e-05
+Epoch 340, Loss: 5.1366804668761225e-05
+Epoch 350, Loss: 7.439299235071572e-05
+Epoch 360, Loss: 0.00010056926003032823
+Epoch 370, Loss: 0.0001271070610407345
+Epoch 380, Loss: 0.000335281952465004
+Epoch 390, Loss: 5.673347703316472e-13
+Epoch 400, Loss: 2.8867122814371463e-19
+Epoch 410, Loss: 4.9699025889828965e-26
+Epoch 420, Loss: 2.3863042382935607e-29
+Epoch 430, Loss: 3.1554436208840472e-30
+Epoch 440, Loss: 7.099748146989106e-30
+Epoch 450, Loss: 3.0814879110195774e-29
+Epoch 460, Loss: 2.3863042382935607e-29
+Epoch 470, Loss: 1.262177448353619e-29
+Epoch 480, Loss: 1.232595164407831e-30
+```
+
+I cut this off at Epochs 480, because our loss doesn't get any better. An optimization you will find in most machine learning frameworks is the ability to end training once this happens. I'll leave it as an exercise for the reader.
+
+Once we're trained our model can approximate multiplication by 100! 
+
+```
+We're trained, let's predict again!
+Trained: we generated:  [0.0890409] . We expect: [8.90409031]  and we predicted: [[8.90409031]]
+Trained: we generated:  [0.86600751] . We expect: [86.60075139]  and we predicted: [[86.60075139]]
+Trained: we generated:  [0.3331138] . We expect: [33.31138021]  and we predicted: [[33.31138021]]
+Trained: we generated:  [0.41452428] . We expect: [41.45242763]  and we predicted: [[41.45242763]]
+Trained: we generated:  [0.05721202] . We expect: [5.72120208]  and we predicted: [[5.72120208]]
+Trained: we generated:  [0.79360317] . We expect: [79.36031669]  and we predicted: [[79.36031669]]
+Trained: we generated:  [0.19316983] . We expect: [19.31698284]  and we predicted: [[19.31698284]]
+Trained: we generated:  [0.60445802] . We expect: [60.44580193]  and we predicted: [[60.44580193]]
+Trained: we generated:  [0.27644826] . We expect: [27.64482629]  and we predicted: [[27.64482629]]
+Trained: we generated:  [0.37822996] . We expect: [37.82299637]  and we predicted: [[37.82299637]]
+```
+
+# Okay, but can I use this for something useful?
+
+Yes. Let's run the script with `--type complex`. I didn't mention this earlier because I didn't want the idea of multiple inputs clouding our understanding of the network. But we 
+coded the network to be flexible enough to handle multiple inputs. I'm still going use fake data, but we can do something that approximates a real machine learning problem: Let's estimate apartment prices. This is still a toy but it will demonstrate the flexibility of 
+the perceptron.
+
+We'll have a few inputs:
+
+* square feet
+* num bedrooms
+* num bathrooms
+* proximity to transit
+* neighborhood quality
+
+To generate some training data, we'll use a function to create fake data using some rules around each feature and then a random fluctuation of 0-10%.
+
+Let's look at the code to generate an apartment:
+
+```python
+def generate_apartment_data(num_samples=1000):
+    # Initialize empty lists to hold our features and labels
+    features = []
+    labels = []
+
+    # Generate features and labels
+    for _ in range(num_samples):
+        square_feet = np.random.randint(500, 3001)
+        num_bedrooms = np.random.randint(0, 5)
+        num_bathrooms = np.random.randint(1, 4)
+        proximity_to_transit = np.random.randint(1, 11)
+        neighborhood_quality = np.random.randint(1, 11)
+
+        # Combine individual features into a single feature vector for each sample
+        feature_vector = [square_feet, num_bedrooms, num_bathrooms, proximity_to_transit, neighborhood_quality]
+
+        # Calculate label (price) based on the features
+        base_price = (square_feet * 1.5) + (num_bedrooms * 300) + (num_bathrooms * 200) + (
+                    proximity_to_transit * 40) + (neighborhood_quality * 50)
+
+        # Add random fluctuation between 0-10%
+        fluctuation = np.random.uniform(0, 0.1)
+        final_price = base_price * (1 + fluctuation)
+
+        features.append(feature_vector)
+        labels.append(final_price)
+
+    return np.array(features), np.array(labels)
+```
+
+That gives us our apartments, but now we need a new network architecture to accommodate the additional features:
+
+```python
+mlp = MultiLevelPerceptron([5, 3, 3, 1])
+```
+
+Here we have an initial network of 5 for our 5 features and 1 output for our price prediction. 
+
+We then train and predict using the `generate_apartment_data` function.
+
+Here is an interesting result though, 1000 Epochs does not cut it:
+
+```
+jmordetsky in ~/curriculum (main) > python3 perceptron/mlp.py --type complex
+Untrained: we generated an apartment of:   [[892   4   2  10   8]] . We expect price: [4108.57473279]  but we predicted: [[942.36023216]]
+Let's train! 
+Epoch 0, Loss: 0.005159165558553977
+Epoch 10, Loss: 0.006152482172549563
+Epoch 20, Loss: 0.006189230772048651
+Epoch 30, Loss: 0.006223526280184651
+Epoch 40, Loss: 0.00625568478919934
+
+Epoch 980, Loss: 0.007183852064893064
+Epoch 990, Loss: 0.007187396781743929
+```
+
+Here our loss went up :/ we weren't able to reduce it. 
+
+Our predictions get better, but we can't call them accurate. My goal is to atleast predict the correct 1000th place:
+
+```
+We're trained, let's predict again!
+Trained: we generated an apartment of:   [[1626    1    3    4    3]] . We expect price: [3786.0262463]  but we predicted: [[2575.88606236]]
+Trained: we generated an apartment of:   [[2486    2    3    7    2]] . We expect price: [5372.86306652]  but we predicted: [[3937.28568446]]
+Trained: we generated an apartment of:   [[1982    3    2    9    6]] . We expect price: [5372.42162031]  but we predicted: [[3145.89263443]]
+Trained: we generated an apartment of:   [[2844    0    3    1    9]] . We expect price: [5810.21848011]  but we predicted: [[4505.95657891]]
+Trained: we generated an apartment of:   [[1582    1    1    7    9]] . We expect price: [3900.49297262]  but we predicted: [[2516.61708312]]
+Trained: we generated an apartment of:   [[2568    3    1    6    8]] . We expect price: [5885.16101228]  but we predicted: [[4072.3133621]]
+Trained: we generated an apartment of:   [[2760    0    2    6    3]] . We expect price: [5155.23394852]  but we predicted: [[4373.10802135]]
+Trained: we generated an apartment of:   [[2407    4    1    7    1]] . We expect price: [5840.77828081]  but we predicted: [[3811.00517851]]
+Trained: we generated an apartment of:   [[876   4   2   6   2]] . We expect price: [3254.90222714]  but we predicted: [[1388.76776535]]
+Trained: we generated an apartment of:   [[963   3   3   3   1]] . We expect price: [3390.44788699]  but we predicted: [[1522.51111059]]
+```
+
+What do we do? Like a good athlete, we train harder! My assumptions here was that the increasing MSE indicated we didn't have enough complexity in the network to capture relationships in the data, so I bumped both the network complexity.
+
+However, I kept observing a flattening of the MSE. So I needed to implement `patience`.
+
+# Having some patience
+
+Patience as a mechanism to prevent overfitting by allowing the model to train for a few more epochs even when it seems like the performance is degrading. This is done to ensure that the model has genuinely stopped improving and is not just fluctuating.
+
+The augmented training routine:
+
+```python
+    def train(self, X, y, epochs, learning_rate=0.01, patience_limit=15):
+        best_val_loss = float('inf')
+        patience_counter = 0
+        for epoch in range(epochs):
+            for x_val, y_val in zip(X, y):
+                # sometimes storing the zs is useful for backpropagation. So, predict returns it
+                # but we don't need it here
+                y_pred, activations, _ = self.predict(x_val)
+                loss = self.calculate_loss(y_val, y_pred)
+                grad_weights, grad_biases = self.backward_propagation(y_val, y_pred, activations)
+                self.update_parameters(grad_weights, grad_biases, learning_rate)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}, Loss: {loss}")
+
+            if loss < best_val_loss:
+                best_val_loss = loss
+                patience_counter = 0  # Reset counter
+            else:
+                patience_counter += 1  # Increment counter
+
+            if patience_counter >= patience_limit:
+                print("Early stopping due to lack of improvement.")
+                break
+```
+
+# Revisiting a complex model architecture:
+
+
+# Math
+
 There is a bunch of math concepts we're going to need to get comfortable with if we want to know how this stuff works. We don't need to solve any equations mind you, but it really helps to know the high level concepts.
 
-In calculus, a derivative measures how a function changes as its input changes. In simpler terms, it tells us the "slope" or "rate of change" at a particular point. The mathematical notation for the derivative of a function is $\( f(x) \) is \( f'(x) \) or \( \frac{{d}}{{dx}} f(x) \).
+In calculus, a derivative measures how a function changes as its input changes. In simpler terms, it tells us the "slope" or "rate of change" at a particular point. The mathematical notation for the derivative of a function is $\( f(x) \)$ is $\( f'(x) \)$ or $\( \frac{{d}}{{dx}} f(x) \)$.
 
+#### Intuition
+
+Imagine driving a car on a hilly road. The derivative would tell you how steep the hill is at each point. If the derivative is zero, you're at a flat point, possibly the top or bottom of a hill.
+
+
+### Partial Derivative
+
+In multivariable calculus, when a function depends on more than one variable, we use partial derivatives. A partial derivative with respect to one variable tells us how the function changes with respect to that variable, keeping all other variables constant.
+
+#### Intuition
+
+Let's say you're playing minecraft, and you're in a mountain range. The mountains extend descend in different directions. Depending on the direction you move in, you might move up or down. In a Minecraft mountain range, each point in the terrain can be represented by coordinates $\( (x, y, z) \)$, where $\( x \)$ and $\( y \)$ are the horizontal coordinates and $\( z \)$ is the elevation. 
+
+If you're standing at a particular point $\( (x_0, y_0, z_0) \)$, a partial derivative with respect to $\( x \)$ would tell you how much the elevation $\( z \)$ changes as you move in the $\( x \)$-direction, while keeping $\( y \)$ constant. Similarly, the partial derivative with respect to $\( y \)$ would tell you how $\( z \)$ changes as you move in the $\( y \)$-direction, keeping $\( x \)$ constant.
+
+So, if $\( \frac{\partial z}{\partial x} \)$ is positive at $\( (x_0, y_0, z_0) \)$, it means that moving in the positive $\( x \)$-direction will increase your elevation, i.e., you'll be moving uphill. If it's negative, you'll be moving downhill. The same logic applies for $\( \frac{\partial z}{\partial y} \)$.
+
+In the context of neural networks, each weight and bias can be thought of as a coordinate in a high-dimensional space, and the partial derivatives help us understand how the error changes as we tweak each of these parameters.
