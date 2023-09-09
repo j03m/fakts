@@ -29,7 +29,7 @@ augmentation such that our network can be made to predict what `i * 100` would p
 
 Weights are the strength of the connections between neurons in different layers of the network. You can think of them as the influence one neuron has over the next. In a mathematical sense, each weight represents the multiplier for an input value. 
 
-For example, consider a simple equation for a straight line \( y = mx + b \). Here, \( m \) would be akin to the weight—it determines how much \( x \) influences \( y \).
+For example, consider a simple equation for a straight line $\( y = mx + b \)$. Here, $\( m \)$ would be akin to the weight—it determines how much $\( x \)$ influences $\( y \)$.
 
 ### What are Biases?
 

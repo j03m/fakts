@@ -101,7 +101,7 @@ class MultiLevelPerceptron:
         self.weights = [w - learning_rate * gw for w, gw in zip(self.weights, grad_weights)]
         self.biases = [b - learning_rate * gb for b, gb in zip(self.biases, grad_biases)]
 
-    def train(self, X, y, epochs, learning_rate=0.01, patience_limit=100, warm_up_epochs=500):
+    def train(self, X, y, epochs, learning_rate=0.01, patience_limit=500, warm_up_epochs=500):
         best_val_loss = float('inf')
         patience_counter = 0
 
@@ -196,7 +196,7 @@ if __name__ == "__main__":
 
     elif args.type == "complex":
         # 5 inputs, 1 output
-        mlp = MultiLevelPerceptron([5, 8, 8, 6, 6, 4, 1])
+        mlp = MultiLevelPerceptron([5, 25, 1])
 
         # Generate data
         X, y = generate_apartment_data(num_samples=1)
